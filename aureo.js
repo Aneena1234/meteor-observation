@@ -1124,15 +1124,15 @@ class MeteorMapAlertSystem {
 
   filterActiveShowers(showers) {
     const now = new Date();
-    return showers.filter(shower => {
-      const startDate = new Date(shower.startDate);
-      const endDate = new Date(shower.endDate);
-      return now >= startDate && now <= endDate;
-    }).sort((a, b) => {
-      const aPeak = new Date(a.peakDate);
-      const bPeak = new Date(b.peakDate);
-      return Math.abs(now - aPeak) - Math.abs(now - bPeak);
-    });
+    // Consider a shower "active" if its peak is within the last 7 days or next 30 days
+    return showers
+      .filter(shower => {
+        const peak = new Date(shower.peak || shower.peakDate || shower.date || 0);
+        if (isNaN(peak)) return false;
+        const diffDays = (peak - now) / (1000 * 60 * 60 * 24);
+        return diffDays >= -7 && diffDays <= 30;
+      })
+      .sort((a, b) => new Date(a.peak || a.peakDate) - new Date(b.peak || b.peakDate));
   }
 
   updateShowerList() {
@@ -1147,7 +1147,7 @@ class MeteorMapAlertSystem {
       <div class="shower-item">
         <div class="shower-name">${shower.name}</div>
         <div class="shower-details">
-          Peak: ${new Date(shower.peakDate).toLocaleDateString()}<br>
+          Peak: ${new Date(shower.peak || shower.peakDate).toLocaleDateString()}<br>
           ZHR: ${shower.zhr} meteors/hour<br>
           Origin: ${shower.origin}
         </div>
@@ -1225,10 +1225,10 @@ class MeteorMapAlertSystem {
     if (this.activeShowers.length === 0) return 'None';
    
     const now = new Date();
-    const nextShower = this.activeShowers.find(shower => new Date(shower.peakDate) > now);
+    const nextShower = this.activeShowers.find(shower => new Date(shower.peak || shower.peakDate) > now);
    
     if (nextShower) {
-      const peakDate = new Date(nextShower.peakDate);
+      const peakDate = new Date(nextShower.peak || nextShower.peakDate);
       const daysUntil = Math.ceil((peakDate - now) / (1000 * 60 * 60 * 24));
       return `${nextShower.name} (${daysUntil}d)`;
     }
@@ -1994,6 +1994,14 @@ async function fetchMeteorData() {
   const eventsSection = document.querySelector("#events .cards");
   eventsSection.innerHTML = `<div class="card gradient1 loading-card"><h4>Loading meteor data...</h4></div>`;
 
+  // Show 4–5 popular showers using hardcoded data as requested
+  const popular = getPopularShowers(5);
+  if (popular && popular.length) {
+    displayMeteorData(popular, 'Popular Showers');
+    localStorage.setItem("meteorData", JSON.stringify({ data: popular, time: Date.now(), source: 'Popular' }));
+    return;
+  }
+
   // Check for cached data first
   const cached = localStorage.getItem("meteorData");
   if (cached) {
@@ -2054,11 +2062,24 @@ async function fetchMeteorData() {
     }
 
     if (data && Array.isArray(data) && data.length > 0) {
-      // Sort by upcoming peak date and filter for upcoming showers
-      const upcoming = data
-        .filter(shower => new Date(shower.peak) >= new Date())
+      // Normalize and filter by upcoming peak date
+      const normalized = data
+        .map(s => ({
+          ...s,
+          peak: s.peak || s.peakDate || s.date || new Date().toISOString()
+        }));
+      let upcoming = normalized
+        .filter(shower => {
+          const d = new Date(shower.peak);
+          return !isNaN(d) && d >= new Date();
+        })
         .sort((a, b) => new Date(a.peak) - new Date(b.peak))
         .slice(0, 8); // Show next 8 showers
+      // If no future events from APIs, fallback to curated set
+      if (!upcoming || upcoming.length === 0) {
+        upcoming = getCuratedUpcomingShowers();
+        successfulAPI = successfulAPI || 'Curated Dataset';
+      }
      
       displayMeteorData(upcoming, successfulAPI);
      
@@ -2075,6 +2096,61 @@ async function fetchMeteorData() {
     console.error("All meteor data APIs failed:", err);
     displayFallbackData();
   }
+}
+
+// Curated dataset used as a reliable fallback when APIs have no future items
+function getCuratedUpcomingShowers() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const candidates = [
+    { name: 'Quadrantids', month: 1, day: 4, zhr: 110, parent: '2003 EH1', description: 'Sharp, short peak; strong Northern shower.' },
+    { name: 'Lyrids', month: 4, day: 22, zhr: 18, parent: 'Comet Thatcher', description: 'Occasional fireballs, steady annual show.' },
+    { name: 'Eta Aquariids', month: 5, day: 6, zhr: 50, parent: 'Comet Halley', description: 'Best before dawn; stronger in Southern hemisphere.' },
+    { name: 'Perseids', month: 8, day: 12, zhr: 100, parent: 'Comet Swift–Tuttle', description: 'Most popular Northern shower; bright and numerous.' },
+    { name: 'Orionids', month: 10, day: 21, zhr: 20, parent: 'Comet Halley', description: 'Fast meteors with persistent trains.' },
+    { name: 'Leonids', month: 11, day: 17, zhr: 15, parent: 'Comet Tempel–Tuttle', description: 'Can produce storms in some years.' },
+    { name: 'Geminids', month: 12, day: 14, zhr: 120, parent: '3200 Phaethon', description: 'Most reliable; many bright, medium-speed meteors.' },
+    { name: 'Ursids', month: 12, day: 22, zhr: 10, parent: 'Comet Tuttle', description: 'Northern minor shower near the Little Dipper.' }
+  ];
+  const toISO = (year, m, d) => new Date(Date.UTC(year, m - 1, d, 6, 0, 0)).toISOString();
+  const enriched = candidates.map(s => {
+    // If peak date in current year already passed, use next year
+    const thisYearPeak = new Date(Date.UTC(y, s.month - 1, s.day, 6, 0, 0));
+    const peakDate = thisYearPeak < now ? new Date(Date.UTC(y + 1, s.month - 1, s.day, 6, 0, 0)) : thisYearPeak;
+    return {
+      name: s.name,
+      peak: peakDate.toISOString(),
+      zhr: s.zhr,
+      parent: s.parent,
+      description: s.description
+    };
+  });
+  return enriched
+    .filter(s => new Date(s.peak) >= now)
+    .sort((a, b) => new Date(a.peak) - new Date(b.peak))
+    .slice(0, 8);
+}
+
+// Fixed popular list: Perseids, Geminids, Quadrantids, Lyrids, Leonids (4–5 cards)
+function getPopularShowers(limit = 5) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const toISO = (year, m, d) => new Date(Date.UTC(year, m - 1, d, 6, 0, 0)).toISOString();
+  const base = [
+    { name: 'Quadrantids', month: 1, day: 4, zhr: 110, parent: '2003 EH1' },
+    { name: 'Lyrids', month: 4, day: 22, zhr: 18, parent: 'Comet Thatcher' },
+    { name: 'Perseids', month: 8, day: 12, zhr: 100, parent: 'Comet Swift–Tuttle' },
+    { name: 'Leonids', month: 11, day: 17, zhr: 15, parent: 'Comet Tempel–Tuttle' },
+    { name: 'Geminids', month: 12, day: 14, zhr: 120, parent: '3200 Phaethon' }
+  ].map(s => {
+    const thisYearPeak = new Date(Date.UTC(y, s.month - 1, s.day, 6, 0, 0));
+    const peak = thisYearPeak < now ? toISO(y + 1, s.month, s.day) : toISO(y, s.month, s.day);
+    return { name: s.name, peak, zhr: s.zhr, parent: s.parent };
+  });
+  return base
+    .filter(s => new Date(s.peak) >= now)
+    .sort((a, b) => new Date(a.peak) - new Date(b.peak))
+    .slice(0, limit);
 }
 
 // API Parser Functions
@@ -2249,10 +2325,10 @@ function displayMeteorData(data, source = 'API') {
  
   data.slice(0, 8).forEach((shower, index) => {
     const card = document.createElement("div");
-    card.className = `card gradient${(index % 3) + 1}`;
+    card.className = `card shower-card gradient${(index % 3) + 1}`;
    
     // Format peak date
-    const peakDate = new Date(shower.peak);
+    const peakDate = new Date(shower.peak || shower.peakDate);
     const formattedDate = peakDate.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -2266,334 +2342,69 @@ function displayMeteorData(data, source = 'API') {
     const daysUntil = Math.ceil((peakDate - now) / (1000 * 60 * 60 * 24));
     const daysText = daysUntil > 0 ? `${daysUntil} days` : daysUntil === 0 ? 'Today!' : 'Past peak';
    
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(shower.name + ' meteor shower')}`;
     card.innerHTML = `
       <div class="shower-header">
         <h4>${shower.name || 'Unknown Shower'}</h4>
-        <span class="days-until">${daysText}</span>
+        <span class="chip days-until">${daysText}</span>
       </div>
-      <div class="shower-details">
-        <p><strong>Peak:</strong> ${formattedDate}</p>
-        <p><strong>ZHR:</strong> ${shower.zhr || "Unknown"} meteors/hour</p>
-        <p><strong>Origin:</strong> ${shower.parent || "N/A"}</p>
-        ${shower.radiant ? `<p><strong>Radiant:</strong> ${shower.radiant}</p>` : ''}
-        ${shower.velocity ? `<p><strong>Velocity:</strong> ${shower.velocity}</p>` : ''}
-        ${shower.description ? `<p class="shower-description">${shower.description}</p>` : ''}
+      <div class="shower-meta">
+        <span class="badge zhr-badge">ZHR ${shower.zhr || '—'}</span>
+        <span class="badge origin-badge">${shower.parent || 'N/A'}</span>
+        <span class="badge date-badge">${formattedDate}</span>
       </div>
       ${shower.image ? `<div class="shower-image"><img src="${shower.image}" alt="${shower.name}" loading="lazy"></div>` : ''}
+      ${shower.description ? `<p class="shower-description">${shower.description}</p>` : ''}
+      <div class="shower-cta">
+        <a class="btn-ghost" href="${searchUrl}" target="_blank" rel="noopener">Learn more →</a>
+      </div>
     `;
     eventsSection.appendChild(card);
   });
-}
 
-function displayFallbackData() {
-  const eventsSection = document.querySelector("#events .cards");
-  const currentYear = new Date().getFullYear();
- 
-  eventsSection.innerHTML = `
-    <div class="card gradient1">
-      <h4>🌠 Perseids</h4>
-      <p><strong>Peak:</strong> August 12-13, ${currentYear}<br/>
-      <strong>ZHR:</strong> ~100 meteors/hour<br/>
-      <strong>Origin:</strong> Comet Swift-Tuttle</p>
-    </div>
-    <div class="card gradient2">
-      <h4>💫 Geminids</h4>
-      <p><strong>Peak:</strong> December 13-14, ${currentYear}<br/>
-      <strong>ZHR:</strong> ~120 meteors/hour<br/>
-      <strong>Origin:</strong> Asteroid 3200 Phaethon</p>
-    </div>
-    <div class="card gradient3">
-      <h4>⭐ Quadrantids</h4>
-      <p><strong>Peak:</strong> January 3-4, ${currentYear + 1}<br/>
-      <strong>ZHR:</strong> ~110 meteors/hour<br/>
-      <strong>Origin:</strong> Asteroid 2003 EH1</p>
-    </div>
-    <div class="card gradient1">
-      <h4>🌌 Leonids</h4>
-      <p><strong>Peak:</strong> November 17-18, ${currentYear}<br/>
-      <strong>ZHR:</strong> ~15 meteors/hour<br/>
-      <strong>Origin:</strong> Comet Tempel-Tuttle</p>
-    </div>
-    <div class="card gradient2">
-      <h4>✨ Lyrids</h4>
-      <p><strong>Peak:</strong> April 21-22, ${currentYear + 1}<br/>
-      <strong>ZHR:</strong> ~18 meteors/hour<br/>
-      <strong>Origin:</strong> Comet Thatcher</p>
-    </div>
-    <div class="card gradient3">
-      <h4>🌟 Orionids</h4>
-      <p><strong>Peak:</strong> October 20-21, ${currentYear}<br/>
-      <strong>ZHR:</strong> ~20 meteors/hour<br/>
-      <strong>Origin:</strong> Comet Halley</p>
-    </div>
-  `;
-}
-
-// ---------- METEOR GUIDE CHATBOT ----------
-class GuideChatbot {
-  constructor() {
-    this.logEl = document.getElementById('chat-log');
-    this.inputEl = document.getElementById('chat-input');
-    this.sendBtn = document.getElementById('chat-send');
-    this.quickBtns = document.querySelectorAll('.chat-quick');
-    this.location = null;
-    this.init();
-  }
-  init() {
-    if (!this.logEl) return;
-    this.bindEvents();
-    this.detectLocation();
-  }
-  bindEvents() {
-    this.sendBtn?.addEventListener('click', () => this.handleSend());
-    this.inputEl?.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.handleSend(); });
-    this.quickBtns.forEach(btn => btn.addEventListener('click', () => {
-      this.inputEl.value = btn.getAttribute('data-prompt');
-      this.handleSend();
-    }));
-  }
-  async handleSend() {
-    const q = (this.inputEl.value || '').trim();
-    if (!q) return;
-    this.append('user', q);
-    this.inputEl.value = '';
-    this.append('bot', 'Thinking...');
-    const lastBot = this.logEl.lastElementChild;
-    try {
-      const answer = await this.routeIntent(q);
-      lastBot.textContent = answer;
-    } catch (e) {
-      lastBot.textContent = 'Sorry, I ran into an issue. Please try again.';
-      console.error(e);
-    }
-    this.logEl.scrollTop = this.logEl.scrollHeight;
-  }
-  append(role, text) {
-    const div = document.createElement('div');
-    div.className = `msg ${role}`;
-    div.textContent = text;
-    this.logEl.appendChild(div);
-  }
-  async detectLocation() {
-    try {
-      const pos = await new Promise((res, rej) => navigator.geolocation ? navigator.geolocation.getCurrentPosition(res, rej,{enableHighAccuracy:true,timeout:8000,maximumAge:300000}) : rej('no-geo'));
-      this.location = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-    } catch { this.location = null; }
-  }
-  async routeIntent(q) {
-    const lower = q.toLowerCase();
-    if (/(upcoming|next|soon).*(shower|meteor)/.test(lower)) return this.answerUpcoming();
-    if (/(best|good).*(time|when)/.test(lower) || /(tonight|peak)/.test(lower)) return this.answerBestTime();
-    if (/(weather|cloud|visibility)/.test(lower)) return this.answerWeather();
-    if (/(what is|who are|define|meaning|about)/.test(lower)) return this.answerDefinition(q);
-    if (/(where|direction|radiant)/.test(lower)) return this.answerRadiant(q);
-    if (/(moon|phase|brightness)/.test(lower)) return this.answerMoonImpact();
-    return this.answerFallback();
-  }
-  async answerUpcoming() {
-    const cache = localStorage.getItem('meteorData');
-    if (!cache) return 'I could not find cached meteor data yet. Try refreshing the events.';
-    const { data } = JSON.parse(cache);
-    const now = new Date();
-    const upcoming = data.filter(s => new Date(s.peakDate) >= now).slice(0,5);
-    if (upcoming.length === 0) return 'No upcoming showers in the cached dataset.';
-    return upcoming.map(s => `${s.name} — peak ${new Date(s.peakDate).toDateString()} (ZHR ${s.zhr})`).join('\n');
-  }
-  async answerBestTime() {
-    const now = new Date();
-    const sunset = new Date(now); sunset.setHours(18,30,0,0);
-    const sunrise = new Date(now); sunrise.setDate(sunrise.getDate()+1); sunrise.setHours(6,30,0,0);
-    const bestStart = new Date(sunset); bestStart.setHours(bestStart.getHours()+2);
-    const peakStart = new Date(sunset); peakStart.setHours(peakStart.getHours()+4);
-    const peakEnd = new Date(sunrise); peakEnd.setHours(peakEnd.getHours()-2);
-    return `Best start around ${bestStart.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}. Peak viewing between ${peakStart.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} and ${peakEnd.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}.`;
-  }
-  async answerWeather() {
-    if (!this.location) return 'I need your location permission to check weather for meteor viewing.';
-    try {
-      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${this.location.lat}&lon=${this.location.lon}&appid=demo&units=metric`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('weather');
-      const w = await res.json();
-      const cloud = w.clouds?.all ?? 0;
-      const visKm = (w.visibility ?? 10000)/1000;
-      const cond = w.weather?.[0]?.description || 'clear sky';
-      const score = Math.max(0, Math.min(100, Math.round(100 - cloud*0.6 - (visKm<5?20:0))));
-      return `Sky: ${cond}, cloud cover ${cloud}%, visibility ${visKm} km. Estimated viewing score: ${score}/100.`;
-    } catch {
-      return 'Weather API is unavailable right now. Please try again later.';
-    }
-  }
-  async answerDefinition(q) {
-    const topic = q.replace(/^(what is|define|meaning of|about)\s*/i,'').trim() || 'Meteor shower';
-    try {
-      const api = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topic)}`;
-      const res = await fetch(api);
-      if (!res.ok) throw new Error('wiki');
-      const j = await res.json();
-      const extract = j.extract || 'No summary available.';
-      return extract.length > 600 ? extract.slice(0, 600) + '…' : extract;
-    } catch {
-      return 'I could not fetch a definition right now.';
-    }
-  }
-  async answerRadiant(q) {
-    const cache = localStorage.getItem('meteorData');
-    if (!cache) return 'I need shower data first. Try refreshing events.';
-    const { data } = JSON.parse(cache);
-    const match = data.find(s => q.toLowerCase().includes(s.name.toLowerCase()));
-    if (!match) return 'Please specify the shower name (e.g., Perseids, Orionids).';
-    const dir = match.radiant?.direction || 'Check northeast after midnight';
-    return `${match.name} radiant: ${dir}. Best viewing after midnight, look ~45° from radiant.`;
-  }
-  async answerMoonImpact() {
-    const now = new Date();
-    const knownNewMoon = new Date('2024-01-11T11:57:00Z');
-    const cycle = 29.53059;
-    const days = ((now - knownNewMoon)/(1000*60*60*24));
-    const c = ((days % cycle)+cycle)%cycle;
-    let illum = 50; if (c<1.84566) illum=0; else if(c<5.53699) illum=12; else if(c<9.22831) illum=25; else if(c<12.91963) illum=50; else if(c<16.61096) illum=85; else if(c<20.30228) illum=70; else if(c<23.99361) illum=50; else illum=20;
-    let impact = 'Moderate'; if (illum<10) impact='Minimal'; else if (illum<30) impact='Low'; else if (illum>80) impact='High';
-    return `Estimated moon illumination ~${illum}%. Impact on meteor visibility: ${impact}. Darker skies near new moon are best.`;
-  }
-  async answerFallback() {
-    return 'I can help with upcoming showers, best viewing times, weather now, radiant directions, or definitions. Try: "Upcoming showers" or "Best time tonight".';
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  try { new GuideChatbot(); } catch(e) { console.warn('Chatbot init skipped', e); }
-});
-
-// ---------- REFRESH BUTTON AND AUTO REFRESH ----------
-document.addEventListener('DOMContentLoaded', () => {
-  const refreshBtn = document.getElementById('refresh-meteor-data');
-  if (refreshBtn) {
-    refreshBtn.addEventListener('click', () => {
-      refreshBtn.style.transform = 'scale(0.95)';
-      setTimeout(() => {
-        refreshBtn.style.transform = '';
-        fetchMeteorData();
-      }, 150);
-    });
-  }
-});
-
-// Auto refresh every 6 hours (more frequent updates)
-setInterval(() => {
-  const cache = localStorage.getItem("meteorData");
-  if (cache) {
-    const { time } = JSON.parse(cache);
-    if (Date.now() - time > 6 * 60 * 60 * 1000) {
-      console.log("Auto-refreshing meteor data...");
-      fetchMeteorData();
-    }
-  }
-}, 30 * 60 * 1000); // check every 30 minutes
-
-/* ================================
-   🌠 METEOR CANVAS ANIMATION
-   ================================ */
-class MeteorAnimation {
-  constructor() {
-    this.canvas = document.getElementById('meteor-canvas');
-    this.ctx = this.canvas.getContext('2d');
-    this.meteors = [];
-    this.stars = [];
-    this.init();
-  }
-
-  init() {
-    this.resizeCanvas();
-    this.createStars();
-    this.animate();
-   
-    window.addEventListener('resize', () => this.resizeCanvas());
-  }
-
-  resizeCanvas() {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-  }
-
-  createStars() {
-    this.stars = [];
-    const numStars = 100;
-    for (let i = 0; i < numStars; i++) {
-      this.stars.push({
-        x: Math.random() * this.canvas.width,
-        y: Math.random() * this.canvas.height,
-        size: Math.random() * 2,
-        opacity: Math.random()
+  // Add a featured image below the upcoming meteor showers
+  const featured = data[0];
+  if (featured) {
+    const container = document.createElement('div');
+    container.className = 'shower-featured-image card gradient2';
+    container.innerHTML = `
+      <div class="featured-caption"><strong>Featured:</strong> ${featured.name || 'Meteor Shower'}</div>
+      <div class="featured-img loading"><span>Loading image…</span></div>
+    `;
+    eventsSection.appendChild(container);
+    // Try to use existing image on the item, otherwise fetch from NASA Images
+    const imgHolder = container.querySelector('.featured-img');
+    if (featured.image) {
+      imgHolder.classList.remove('loading');
+      imgHolder.innerHTML = `<img src="${featured.image}" alt="${featured.name}" loading="lazy">`;
+    } else {
+      fetchNASAImageForQuery(`${featured.name} meteor shower`).then((url) => {
+        if (url) {
+          imgHolder.classList.remove('loading');
+          imgHolder.innerHTML = `<img src="${url}" alt="${featured.name}" loading="lazy">`;
+        } else {
+          imgHolder.classList.remove('loading');
+          imgHolder.innerHTML = `<div class="img-fallback">No image available.</div>`;
+        }
+      }).catch(() => {
+        imgHolder.classList.remove('loading');
+        imgHolder.innerHTML = `<div class="img-fallback">No image available.</div>`;
       });
     }
   }
-
-  createMeteor() {
-    if (Math.random() < 0.02) { // 2% chance per frame
-      this.meteors.push({
-        x: Math.random() * this.canvas.width,
-        y: -10,
-        vx: (Math.random() - 0.5) * 4,
-        vy: Math.random() * 3 + 2,
-        life: 1,
-        decay: Math.random() * 0.02 + 0.01,
-        size: Math.random() * 3 + 1
-      });
-    }
-  }
-
-  updateMeteors() {
-    for (let i = this.meteors.length - 1; i >= 0; i--) {
-      const meteor = this.meteors[i];
-      meteor.x += meteor.vx;
-      meteor.y += meteor.vy;
-      meteor.life -= meteor.decay;
-
-      if (meteor.life <= 0 || meteor.y > this.canvas.height) {
-        this.meteors.splice(i, 1);
-      }
-    }
-  }
-
-  drawStars() {
-    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    this.stars.forEach(star => {
-      this.ctx.globalAlpha = star.opacity;
-      this.ctx.beginPath();
-      this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-      this.ctx.fill();
-    });
-    this.ctx.globalAlpha = 1;
-  }
-
-  drawMeteors() {
-    this.meteors.forEach(meteor => {
-      const gradient = this.ctx.createLinearGradient(
-        meteor.x, meteor.y,
-        meteor.x - meteor.vx * 10, meteor.y - meteor.vy * 10
-      );
-      gradient.addColorStop(0, `rgba(255, 255, 255, ${meteor.life})`);
-      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-     
-      this.ctx.strokeStyle = gradient;
-      this.ctx.lineWidth = meteor.size;
-      this.ctx.beginPath();
-      this.ctx.moveTo(meteor.x, meteor.y);
-      this.ctx.lineTo(meteor.x - meteor.vx * 10, meteor.y - meteor.vy * 10);
-      this.ctx.stroke();
-    });
-  }
-
-  animate() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-   
-    this.createMeteor();
-    this.updateMeteors();
-    this.drawStars();
-    this.drawMeteors();
-   
-    requestAnimationFrame(() => this.animate());
-  }
 }
 
+// Helper: NASA Images API search returning a representative image URL
+async function fetchNASAImageForQuery(query) {
+  try {
+    const api = `https://images-api.nasa.gov/search?q=${encodeURIComponent(query)}&media_type=image`;
+    const res = await fetch(api);
+    if (!res.ok) return '';
+    const j = await res.json();
+    const items = j.collection && Array.isArray(j.collection.items) ? j.collection.items : [];
+    const first = items.find(it => Array.isArray(it.links) && it.links[0]?.href) || items[0];
+    return first?.links?.[0]?.href || '';
+  } catch {
+    return '';
+  }
+}
