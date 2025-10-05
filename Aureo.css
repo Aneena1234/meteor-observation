@@ -1,3 +1,7 @@
+Gmail	Aneena Salam <aneena569@gmail.com>
+(no subject)
+Anjana K r <anjanakr1212@gmail.com>	6 October 2025 at 00:03
+To: Aneena Salam <aneena569@gmail.com>
 /* ----------  RESET + GLOBAL  ---------- */
 *{margin:0;padding:0;box-sizing:border-box;}
 body{
@@ -190,6 +194,33 @@ section h3{font-size:2.2rem;text-align:center;margin-bottom:2rem;text-shadow:0 0
   color: #fff;
   font-size: 0.8rem;
 }
+
+/* Featured image below upcoming meteor showers */
+.shower-featured-image {
+  display: grid;
+  gap: .6rem;
+}
+.featured-caption { color: #000; font-weight: 700; }
+.featured-img { display: grid; place-items: center; min-height: 180px; background: rgba(0,0,0,.08); border-radius: 8px; overflow: hidden; }
+.featured-img.loading { color: #000; opacity: .8; font-weight: 600; }
+.featured-img img { width: 100%; height: auto; display: block; }
+.img-fallback { color: #000; opacity: .8; font-style: italic; }
+
+/* Upcoming summary just below heading */
+.upcoming-summary { color: #000; }
+.u-title { font-weight: 800; margin-bottom: .4rem; }
+.u-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .3rem; }
+.u-list li { display: grid; grid-template-columns: 1fr auto auto auto; gap: .6rem; align-items: center; background: rgba(255,255,255,.25); padding: .4rem .6rem; border-radius: 8px; }
+.u-name { font-weight: 700; }
+.u-date, .u-zhr, .u-origin { font-size: .85rem; opacity: .85; }
+.u-origin { text-align: right; }
+
+/* Compact names + details list above cards */
+.upcoming-list { color: #000; }
+.upcoming-list-ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .4rem; }
+.upcoming-list-ul li { background: rgba(255,255,255,.25); padding: .5rem .7rem; border-radius: 8px; }
+.l-name { font-weight: 800; }
+.l-date, .l-zhr, .l-origin { opacity: .9; }
 
 /* ----------  LISTS & TIPS  ---------- */
 .info-list{max-width:700px;margin:auto;list-style:disc;color:#ddd;line-height:1.6;}
@@ -1989,3 +2020,4 @@ footer{text-align:center;padding:2rem;background:rgba(20,20,40,.8);margin-top:2r
     text-align: center;
   }
 }
+
