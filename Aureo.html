@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Aureo Meteor Observation</title>
+  <meta name="theme-color" content="#000">
+  <link rel="preload" href="Aureo.css" as="style">
+  <style>
+    /* Critical CSS to prevent unstyled content */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #fff; 
+      background: #000; 
+      overflow-x: hidden; 
+      min-height: 100vh;
+    }
+    #meteor-canvas {
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      z-index: -1; 
+      pointer-events: none;
+    }
+    .login-container {
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%);
+      background: rgba(20, 20, 40, 0.85); 
+      padding: 2rem; 
+      border-radius: 12px;
+      text-align: center; 
+      box-shadow: 0 0 20px rgba(255, 100, 255, 0.7);
+    }
+    .login-container h1 {
+      margin-bottom: 1.5rem;
+      background: linear-gradient(90deg, #ff512f, #dd2476, #24c6dc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .login-container input {
+      display: block; 
+      width: 100%; 
+      margin: 0.6rem 0; 
+      padding: 0.8rem;
+      border: none; 
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1); 
+      color: #fff;
+    }
+    .login-container input::placeholder { color: #ddd; }
+    .login-container button {
+      margin-top: 1rem; 
+      padding: 0.8rem 2rem; 
+      border: none; 
+      border-radius: 20px;
+      background: linear-gradient(45deg, #ff6ec4, #7873f5);
+      color: #fff; 
+      font-weight: bold; 
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(255, 150, 255, 0.8); 
+      transition: transform 0.3s;
+    }
+    .login-container button:hover { transform: scale(1.05); }
+    #main-site { display: none; }
+  </style>
+  <link rel="stylesheet" href="Aureo.css" onload="this.onload=null;this.rel='stylesheet'" onerror="console.error('CSS failed to load')"/>
+</head>
+<body>
+  <canvas id="meteor-canvas"></canvas>
+
+  <!-- LOGIN -->
+  <div id="login-screen" class="login-container">
+    <h1>🌠 Aureo Observation Portal</h1>
+    <form id="login-form">
+      <input type="text" id="name" placeholder="Full Name" required/>
+      <input type="email" id="email" placeholder="Email Address" required/>
+      <input type="password" id="password" placeholder="Password" required/>
+      <button type="submit">Sign Up / Login</button>
+    </form>
+    <div id="loading-indicator" style="display: none; margin-top: 1rem; color: #ff6ec4;">
+      Loading...
+    </div>
+  </div>
+
+  <!-- MAIN SITE -->
+  <div id="main-site" style="display:none;">
+    <header>
+      <h1>🌠 Aureo Meteor Observation</h1>
+      <nav>
+        <a href="#features">Features</a>
+        <a href="#events">Events</a>
+        <a href="#facts">Facts</a>
+        <a href="#tips">Tips</a>
+        <a href="#team">Team</a>
+        <a href="#map-alert">Map & Alerts</a>
+      </nav>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </header>
+
+    <main>
+      <section class="hero">
+        <h2>The Meteor Observation Challenge</h2>
+        <p>Explore the universe’s most spectacular shows — meteor showers blazing through the night sky. Get data, tips, and live updates!</p>
+        <button onclick="scrollToSection('events')">🌌 See Upcoming Events</button>
+      </section>
+
+      <section id="features">
+        <h3>✨ Features</h3>
+        <div class="cards">
+          <div class="card gradient1">
+            <h4>Personalized Sky View</h4>
+            <p>AR-based pointing tools to track radiant locations.</p>
+            <button class="ar-open" onclick="openAR()">🎯 Open AR View</button>
+          </div>
+          <div class="card gradient2"><h4>Smart Notifications</h4><p>Alerts based on your city, weather, and shower intensity.</p>
+            <button class="hub-open" onclick="openNotificationHub()">🔔 Open Notification Hub</button></div>
+          <div class="card gradient3"><h4>Live Visibility Stats</h4><p>Real-time data about moon brightness, cloud cover, and best viewing hours.</p>
+            <button class="stats-open" onclick="openLiveStats()">📊 Open Live Stats</button></div>
+        </div>
+      </section>
+
+      <!-- 🤖 METEOR GUIDE CHATBOT -->
+      <section id="guide-chatbot">
+        <h3>🤖 Meteor Guide Chatbot</h3>
+        <div class="chatbot-container">
+          <div class="chatbot-sidebar">
+            <div class="chatbot-quick-prompts">
+              <button class="chat-quick" data-prompt="What meteor showers are upcoming?">Upcoming showers</button>
+              <button class="chat-quick" data-prompt="When is the best time to watch meteors tonight?">Best time tonight</button>
+              <button class="chat-quick" data-prompt="What is the Perseids meteor shower?">What is Perseids?</button>
+              <button class="chat-quick" data-prompt="How is the weather for meteor watching right now?">Weather now</button>
+            </div>
+            <div class="chatbot-hints">
+              <small>Try: "Where to look for Orionids?", "Visibility score now", "Moon phase impact"</small>
+            </div>
+          </div>
+          <div class="chatbot-main">
+            <div id="chat-log" class="chat-log">
+              <div class="msg bot">Hi! I’m your Meteor Guide. Ask me about showers, best viewing times, weather, radiant directions, or definitions.</div>
+            </div>
+            <div class="chat-input-row">
+              <input id="chat-input" class="chat-input" type="text" placeholder="Ask anything about meteors..."/>
+              <button id="chat-send" class="chat-send">Send</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 🌌 DYNAMIC EVENTS SECTION -->
+      <section id="events">
+        <div class="events-header">
+          <h3>🌌 Upcoming Meteor Showers</h3>
+          <button id="refresh-meteor-data" class="refresh-meteor-btn" title="Refresh meteor data">🔄</button>
+        </div>
+        <div class="cards">
+          <div class="card gradient1"><h4>Loading meteor data...</h4></div>
+        </div>
+      </section>
+
+      <section id="facts">
+        <h3>📖 Meteor Shower Facts</h3>
+        <ul class="info-list">
+          <li>Meteors are caused by dust and debris from comets & asteroids burning in Earth’s atmosphere.</li>
+          <li>Most meteors are smaller than a grain of sand!</li>
+          <li>The fastest meteors can travel at 72 km/s.</li>
+          <li>Bright fireballs are called bolides and can cast shadows.</li>
+        </ul>
+      </section>
+
+      <section id="tips">
+        <h3>🔭 Observation Tips</h3>
+        <div class="tips-grid">
+          <div class="tip">Find a dark-sky area away from city lights.</div>
+          <div class="tip">Give your eyes 20+ minutes to adjust to the dark.</div>
+          <div class="tip">Bring a blanket, chair, and warm clothes.</div>
+          <div class="tip">Look about 45° away from the radiant for the best views.</div>
+          <div class="tip">Use apps or star maps to identify constellations.</div>
+        </div>
+      </section>
+
+      <section id="team">
+        <h3>👩‍🚀 Our Team</h3>
+        <ul><li>Afshin Muhammed K P</li><li>Aneena O T</li><li>Anjana K R</li><li>Abhinav S</li></ul>
+      </section>
+
+      <section id="map-alert">
+        <h3>🛰️ Meteor Shower Map & Alerts</h3>
+        
+        <!-- Alert Status Panel -->
+        <div class="alert-status-panel">
+          <div class="alert-header">
+            <h4>📍 Location-Based Alerts</h4>
+            <button id="refresh-location-alerts" class="refresh-alerts-btn" title="Refresh alerts">🔄</button>
+          </div>
+          <div class="alert-content">
+            <div class="alert-box" id="alert-box">Checking your location for visible meteor showers...</div>
+            <div class="alert-details" id="alert-details" style="display: none;">
+              <div class="alert-metrics">
+                <div class="metric-item">
+                  <span class="metric-label">Visibility Score:</span>
+                  <span class="metric-value" id="visibility-score-alert">-</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">Active Showers:</span>
+                  <span class="metric-value" id="active-showers">-</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">Next Peak:</span>
+                  <span class="metric-value" id="next-peak">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Map Container -->
+        <div class="map-container">
+          <div class="map-controls">
+            <div class="map-control-group">
+              <label for="map-type">Map Type:</label>
+              <select id="map-type" class="map-select">
+                <option value="meteor">Meteor Showers</option>
+                <option value="sky">Sky View</option>
+                <option value="radiant">Radiant Points</option>
+                <option value="weather">Weather Overlay</option>
+              </select>
+            </div>
+            <div class="map-control-group">
+              <label for="time-filter">Time Filter:</label>
+              <select id="time-filter" class="map-select">
+                <option value="now">Current Time</option>
+                <option value="tonight">Tonight</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+              </select>
+            </div>
+            <div class="map-control-group">
+              <button id="center-location" class="map-btn">📍 Center on Me</button>
+              <button id="fullscreen-map" class="map-btn">🔍 Fullscreen</button>
+            </div>
+          </div>
+          
+          <div class="map-box">
+            <div class="map-overlay" id="map-overlay">
+              <div class="map-info-panel">
+                <h5>🌠 Active Meteor Showers</h5>
+                <div class="shower-list" id="shower-list">
+                  <div class="shower-item loading">Loading active showers...</div>
+                </div>
+              </div>
+            </div>
+            <iframe id="meteor-map" src="https://www.meteorshowers.org/" title="Meteor Map" loading="lazy"></iframe>
+          </div>
+        </div>
+
+        <!-- Detailed Alert Settings -->
+        <div class="alert-settings-panel">
+          <h4>⚙️ Alert Settings</h4>
+          <div class="alert-settings-grid">
+            <div class="setting-group">
+              <h5>🌙 Moon Phase Alerts</h5>
+              <div class="setting-options">
+                <label class="setting-option">
+                  <input type="checkbox" id="new-moon-alert" checked>
+                  <span class="checkmark"></span>
+                  New Moon (Best Conditions)
+                </label>
+                <label class="setting-option">
+                  <input type="checkbox" id="crescent-alert" checked>
+                  <span class="checkmark"></span>
+                  Crescent Phases
+                </label>
+                <label class="setting-option">
+                  <input type="checkbox" id="quarter-alert">
+                  <span class="checkmark"></span>
+                  Quarter Phases
+                </label>
+              </div>
+            </div>
+            
+            <div class="setting-group">
+              <h5>☁️ Weather Alerts</h5>
+              <div class="setting-options">
+                <label class="setting-option">
+                  <input type="checkbox" id="clear-sky-alert" checked>
+                  <span class="checkmark"></span>
+                  Clear Skies
+                </label>
+                <label class="setting-option">
+                  <input type="checkbox" id="low-cloud-alert" checked>
+                  <span class="checkmark"></span>
+                  Low Cloud Cover
+                </label>
+                <label class="setting-option">
+                  <input type="checkbox" id="visibility-alert" checked>
+                  <span class="checkmark"></span>
+                  High Visibility
+                </label>
+              </div>
+            </div>
+            
+            <div class="setting-group">
+              <h5>⏰ Time Alerts</h5>
+              <div class="setting-options">
+                <label class="setting-option">
+                  <input type="checkbox" id="peak-time-alert" checked>
+                  <span class="checkmark"></span>
+                  Peak Viewing Hours
+                </label>
+                <label class="setting-option">
+                  <input type="checkbox" id="dawn-alert" checked>
+                  <span class="checkmark"></span>
+                  Pre-Dawn Hours
+                </label>
+                <label class="setting-option">
+                  <input type="checkbox" id="weekend-alert">
+                  <span class="checkmark"></span>
+                  Weekend Events
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alert History -->
+        <div class="alert-history-panel">
+          <h4>📋 Recent Alerts</h4>
+          <div class="alert-history" id="alert-history">
+            <div class="history-item">
+              <div class="history-time">Just now</div>
+              <div class="history-message">System initialized - monitoring conditions</div>
+              <div class="history-type">System</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer><p>🌟 Built with passion for stargazers | © Aureo Meteor Observation</p></footer>
+  </div>
+
+  <!-- AR VIEW MODAL -->
+  <div id="ar-modal" class="ar-modal" style="display: none;">
+    <div class="ar-modal-content">
+      <div class="ar-header">
+        <h3>🌌 AR Meteor Shower View</h3>
+        <div class="ar-header-controls">
+          <button id="toggle-examples" class="example-toggle-btn">📖 Examples</button>
+          <button id="close-ar" class="close-ar-btn">✕</button>
+        </div>
+      </div>
+      <div class="ar-camera-container">
+        <video id="ar-camera" autoplay muted playsinline></video>
+        <canvas id="ar-overlay"></canvas>
+        <div class="ar-info-panel">
+          <div class="ar-info-item">
+            <span class="ar-label">Current Shower:</span>
+            <span id="current-shower">Perseids</span>
+          </div>
+          <div class="ar-info-item">
+            <span class="ar-label">Direction:</span>
+            <span id="shower-direction">Northeast</span>
+          </div>
+          <div class="ar-info-item">
+            <span class="ar-label">Best Time:</span>
+            <span id="best-time">After midnight</span>
+          </div>
+        </div>
+        
+        <!-- Meteor Detection Status -->
+        <div id="meteor-status" class="meteor-status">
+          <div id="meteor-message" class="meteor-message">🔍 Searching for meteors...</div>
+          <div id="tilt-instructions" class="tilt-instructions" style="display: none;">
+            <div class="tilt-arrow" id="tilt-arrow">←</div>
+            <div class="tilt-text" id="tilt-text">Tilt Left</div>
+          </div>
+        </div>
+        <div class="ar-controls">
+          <button id="toggle-camera" class="ar-control-btn">📷 Switch Camera</button>
+          <button id="toggle-info" class="ar-control-btn">ℹ️ Toggle Info</button>
+        </div>
+      </div>
+      
+      <!-- Examples Sidebar -->
+      <div id="examples-sidebar" class="examples-sidebar" style="display: none;">
+        <div class="examples-header">
+          <h4>📖 Detection Examples</h4>
+          <button id="close-examples" class="close-examples-btn">✕</button>
+        </div>
+        
+        <div class="examples-content">
+          <div class="example-section">
+            <h5>🔍 Searching State</h5>
+            <div class="example-message searching">
+              <div class="example-icon">🔍</div>
+              <div class="example-text">Searching for meteors...</div>
+            </div>
+            <p class="example-description">This appears when the AR view first opens and is actively scanning for meteors.</p>
+          </div>
+          
+          <div class="example-section">
+            <h5>⚠️ Meteor Not Found</h5>
+            <div class="example-message not-found">
+              <div class="example-icon">⚠️</div>
+              <div class="example-text">Meteor Not Found</div>
+            </div>
+            <div class="example-tilt">
+              <div class="example-arrow">←</div>
+              <div class="example-tilt-text">Tilt Left</div>
+            </div>
+            <p class="example-description">Shows when no meteor is detected after 5 seconds. Follow the arrow direction to adjust your view.</p>
+          </div>
+          
+          <div class="example-section">
+            <h5>🌠 Meteor Found</h5>
+            <div class="example-message found">
+              <div class="example-icon">🌠</div>
+              <div class="example-text">Meteor Found!</div>
+            </div>
+            <div class="example-sparkles">
+              <div class="sparkle">✨</div>
+              <div class="sparkle">✨</div>
+              <div class="sparkle">✨</div>
+            </div>
+            <p class="example-description">Celebration message when a meteor is successfully detected in the view.</p>
+          </div>
+          
+          <div class="example-tips">
+            <h5>💡 Tips</h5>
+            <ul>
+              <li>Point your device at the sky</li>
+              <li>Keep the detection zone in view</li>
+              <li>Follow tilt instructions if meteor not found</li>
+              <li>Be patient - meteors appear randomly</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION HUB MODAL -->
+  <div id="notification-modal" class="notification-modal" style="display: none;">
+    <div class="notification-modal-content">
+      <div class="notification-header">
+        <h3>🔔 Smart Notification Hub</h3>
+        <button id="close-notifications" class="close-notification-btn">✕</button>
+      </div>
+      
+      <div class="notification-content">
+        <!-- Location Settings -->
+        <div class="notification-section">
+          <h4>📍 Location Settings</h4>
+          <div class="location-info">
+            <div class="location-display">
+              <span id="current-location">Detecting your location...</span>
+              <button id="refresh-location" class="refresh-btn">🔄</button>
+            </div>
+            <div class="location-coords" id="location-coords" style="display: none;">
+              <small>Lat: <span id="latitude">-</span>, Lon: <span id="longitude">-</span></small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weather Conditions -->
+        <div class="notification-section">
+          <h4>🌤️ Weather Conditions</h4>
+          <div class="weather-info">
+            <div class="weather-status" id="weather-status">
+              <div class="weather-icon">🌤️</div>
+              <div class="weather-details">
+                <div class="weather-main">Loading weather...</div>
+                <div class="weather-desc">Checking sky conditions</div>
+              </div>
+            </div>
+            <div class="weather-factors">
+              <div class="weather-factor">
+                <span class="factor-label">Cloud Cover:</span>
+                <span class="factor-value" id="cloud-cover">-</span>
+              </div>
+              <div class="weather-factor">
+                <span class="factor-label">Visibility:</span>
+                <span class="factor-value" id="visibility">-</span>
+              </div>
+              <div class="weather-factor">
+                <span class="factor-label">Moon Phase:</span>
+                <span class="factor-value" id="moon-phase">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Meteor Shower Intensity -->
+        <div class="notification-section">
+          <h4>🌠 Meteor Shower Intensity</h4>
+          <div class="intensity-info">
+            <div class="intensity-meter">
+              <div class="intensity-bar">
+                <div class="intensity-fill" id="intensity-fill"></div>
+              </div>
+              <div class="intensity-label" id="intensity-label">Calculating...</div>
+            </div>
+            <div class="intensity-factors">
+              <div class="intensity-factor">
+                <span class="factor-label">ZHR (Zenithal Hourly Rate):</span>
+                <span class="factor-value" id="zhr-rate">-</span>
+              </div>
+              <div class="intensity-factor">
+                <span class="factor-label">Peak Time:</span>
+                <span class="factor-value" id="peak-time">-</span>
+              </div>
+              <div class="intensity-factor">
+                <span class="factor-label">Best Viewing:</span>
+                <span class="factor-value" id="best-viewing">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notification Settings -->
+        <div class="notification-section">
+          <h4>⚙️ Notification Settings</h4>
+          <div class="notification-settings">
+            <div class="setting-item">
+              <label class="setting-label">
+                <input type="checkbox" id="weather-alerts" checked>
+                <span class="checkmark"></span>
+                Weather-based alerts
+              </label>
+              <small>Get notified when sky conditions improve</small>
+            </div>
+            <div class="setting-item">
+              <label class="setting-label">
+                <input type="checkbox" id="peak-alerts" checked>
+                <span class="checkmark"></span>
+                Peak time alerts
+              </label>
+              <small>Notify during optimal viewing times</small>
+            </div>
+            <div class="setting-item">
+              <label class="setting-label">
+                <input type="checkbox" id="intensity-alerts" checked>
+                <span class="checkmark"></span>
+                High intensity alerts
+              </label>
+              <small>Alert when meteor activity is high</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Smart Recommendations -->
+        <div class="notification-section">
+          <h4>💡 Smart Recommendations</h4>
+          <div class="recommendations" id="recommendations">
+            <div class="recommendation-item">
+              <div class="rec-icon">🔍</div>
+              <div class="rec-text">Analyzing conditions...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Test Notification -->
+        <div class="notification-actions">
+          <button id="test-notification" class="test-notification-btn">🔔 Test Notification</button>
+          <button id="enable-notifications" class="enable-notifications-btn">🔔 Enable Notifications</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE VISIBILITY STATS MODAL -->
+  <div id="live-stats-modal" class="live-stats-modal" style="display: none;">
+    <div class="live-stats-modal-content">
+      <div class="live-stats-header">
+        <h3>📊 Live Visibility Stats</h3>
+        <div class="live-stats-controls">
+          <button id="refresh-stats" class="refresh-stats-btn" title="Refresh data">🔄</button>
+          <button id="close-live-stats" class="close-live-stats-btn">✕</button>
+        </div>
+      </div>
+      
+      <div class="live-stats-content">
+        <!-- Current Conditions Overview -->
+        <div class="stats-overview">
+          <div class="overview-card">
+            <div class="overview-icon">🌙</div>
+            <div class="overview-info">
+              <div class="overview-label">Moon Phase</div>
+              <div class="overview-value" id="moon-phase-display">Loading...</div>
+            </div>
+          </div>
+          <div class="overview-card">
+            <div class="overview-icon">☁️</div>
+            <div class="overview-info">
+              <div class="overview-label">Cloud Cover</div>
+              <div class="overview-value" id="cloud-cover-display">Loading...</div>
+            </div>
+          </div>
+          <div class="overview-card">
+            <div class="overview-icon">⭐</div>
+            <div class="overview-info">
+              <div class="overview-label">Visibility Score</div>
+              <div class="overview-value" id="visibility-score">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Moon Brightness Section -->
+        <div class="stats-section">
+          <h4>🌙 Moon Brightness & Phase</h4>
+          <div class="moon-stats">
+            <div class="moon-visual">
+              <div class="moon-phase-circle" id="moon-phase-circle">
+                <div class="moon-illumination" id="moon-illumination"></div>
+              </div>
+              <div class="moon-details">
+                <div class="moon-phase-name" id="moon-phase-name">Loading...</div>
+                <div class="moon-brightness" id="moon-brightness">-</div>
+                <div class="moon-age" id="moon-age">-</div>
+              </div>
+            </div>
+            <div class="moon-impact">
+              <div class="impact-label">Impact on Meteor Viewing:</div>
+              <div class="impact-level" id="moon-impact-level">Calculating...</div>
+              <div class="impact-description" id="moon-impact-desc">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cloud Cover Section -->
+        <div class="stats-section">
+          <h4>☁️ Sky Conditions</h4>
+          <div class="cloud-stats">
+            <div class="cloud-visual">
+              <div class="cloud-cover-bar">
+                <div class="cloud-fill" id="cloud-fill"></div>
+              </div>
+              <div class="cloud-percentage" id="cloud-percentage">-</div>
+            </div>
+            <div class="cloud-details">
+              <div class="cloud-condition" id="cloud-condition">Loading...</div>
+              <div class="cloud-forecast" id="cloud-forecast">-</div>
+              <div class="visibility-distance" id="visibility-distance">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optimal Viewing Hours -->
+        <div class="stats-section">
+          <h4>⏰ Optimal Viewing Hours</h4>
+          <div class="viewing-hours">
+            <div class="current-time">
+              <div class="time-label">Current Time</div>
+              <div class="time-value" id="current-time">-</div>
+              <div class="time-status" id="viewing-status">-</div>
+            </div>
+            <div class="viewing-timeline">
+              <div class="timeline-item">
+                <div class="timeline-time">Sunset</div>
+                <div class="timeline-value" id="sunset-time">-</div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-time">Best Start</div>
+                <div class="timeline-value" id="best-start-time">-</div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-time">Peak Hours</div>
+                <div class="timeline-value" id="peak-hours">-</div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-time">Sunrise</div>
+                <div class="timeline-value" id="sunrise-time">-</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-time Recommendations -->
+        <div class="stats-section">
+          <h4>💡 Live Recommendations</h4>
+          <div class="live-recommendations" id="live-recommendations">
+            <div class="recommendation-item">
+              <div class="rec-icon">🔍</div>
+              <div class="rec-text">Analyzing current conditions...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Data Sources -->
+        <div class="stats-footer">
+          <div class="data-sources">
+            <small>📡 Data sources: Moon API, Weather API, Astronomy API | Updates every 5 minutes</small>
+          </div>
+          <div class="last-updated">
+            <small>Last updated: <span id="stats-last-updated">-</span></small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="aureo.js"></script>
+</body>
+</html>
