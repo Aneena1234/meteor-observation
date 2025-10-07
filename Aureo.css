@@ -1,13 +1,14 @@
-Gmail	Aneena Salam <aneena569@gmail.com>
-(no subject)
-Anjana K r <anjanakr1212@gmail.com>	6 October 2025 at 00:03
-To: Aneena Salam <aneena569@gmail.com>
 /* ----------  RESET + GLOBAL  ---------- */
 *{margin:0;padding:0;box-sizing:border-box;}
 body{
   font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
   color:#fff;background:#000;overflow-x:hidden;
   min-height:100vh;
+}
+/* Improve mobile viewport scrolling and font sizing */
+@media (max-width: 480px){
+  html, body { height: 100%; }
+  body { -webkit-tap-highlight-color: transparent; }
 }
 #meteor-canvas{
   position:fixed;top:0;left:0;width:100%;height:100%;
@@ -46,12 +47,22 @@ header{
   background:rgba(20,20,60,.6);backdrop-filter:blur(8px);
   border-bottom:1px solid rgba(255,255,255,.2);position:sticky;top:0;
 }
+@media (max-width: 768px){
+  header { padding:.75rem 1rem; }
+  header nav { display:flex; flex-wrap:wrap; gap:.5rem; }
+  nav a{ margin-left:0; padding:.35rem .6rem; border-radius:8px; background:rgba(255,255,255,.08); }
+}
 header h1{color:#ffe6ff;text-shadow:0 0 12px #ff66cc;}
 nav a{margin-left:1rem;text-decoration:none;color:#fff;transition:.3s;}
 nav a:hover{color:#ffb3ff;text-shadow:0 0 8px #ff66cc;}
 
 /* ----------  HERO  ---------- */
 .hero{text-align:center;padding:6rem 2rem;}
+.hero p{ padding: 0 0.5rem; }
+@media (max-width: 768px){
+  .hero{ padding:3rem 1rem; }
+  .hero h2{ font-size:2rem; }
+}
 .hero h2{
   font-size:3rem;margin-bottom:1rem;
   background:linear-gradient(90deg,#ff512f,#dd2476,#24c6dc);
@@ -124,6 +135,10 @@ section h3{font-size:2.2rem;text-align:center;margin-bottom:2rem;text-shadow:0 0
 
 /* ----------  CARDS  ---------- */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;}
+.cards .card{ min-height: auto; }
+@media (max-width: 480px){
+  .cards{ grid-template-columns: 1fr; gap: 1rem; }
+}
 .card{padding:1.5rem;border-radius:12px;color:#000;text-align:left;box-shadow:0 0 20px rgba(255,255,255,.4);transition:transform .3s;}
 .card:hover{transform:translateY(-6px) scale(1.05);}
 .gradient1{background:linear-gradient(135deg,#ff9a9e,#fad0c4);}
@@ -144,6 +159,9 @@ section h3{font-size:2.2rem;text-align:center;margin-bottom:2rem;text-shadow:0 0
   margin: 0;
   font-size: 1.2rem;
   color: #000;
+}
+@media (max-width: 480px){
+  .shower-header h4{ font-size:1rem; }
 }
 
 .days-until {
@@ -194,6 +212,7 @@ section h3{font-size:2.2rem;text-align:center;margin-bottom:2rem;text-shadow:0 0
   color: #fff;
   font-size: 0.8rem;
 }
+@media (max-width:480px){ .data-source-indicator{ font-size:.72rem; } }
 
 /* Featured image below upcoming meteor showers */
 .shower-featured-image {
@@ -234,6 +253,7 @@ section h3{font-size:2.2rem;text-align:center;margin-bottom:2rem;text-shadow:0 0
 
 /* ----------  FOOTER  ---------- */
 footer{text-align:center;padding:2rem;background:rgba(20,20,40,.8);margin-top:2rem;font-size:.9rem;color:#ccc;}
+@media (max-width: 768px){ footer{ padding:1rem; font-size:.8rem; } }
 
 /* ----------  ENHANCED MAP & ALERT SYSTEM  ---------- */
 
@@ -2021,3 +2041,217 @@ footer{text-align:center;padding:2rem;background:rgba(20,20,40,.8);margin-top:2r
   }
 }
 
+/* ===== Enhanced Upcoming Showers Card Styles ===== */
+.shower-card { position: relative; overflow: hidden; }
+.shower-card .shower-header { gap: .75rem; }
+.shower-meta { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0 .75rem; }
+.badge { display: inline-block; padding: .25rem .5rem; border-radius: 999px; font-size: .75rem; line-height: 1; background: rgba(255,255,255,.12); color: #000; border: 1px solid rgba(0,0,0,.12); }
+.zhr-badge { background: rgba(0,0,0,.08); font-weight: 700; }
+.origin-badge { opacity: .85; }
+.date-badge { opacity: .85; }
+.chip { display: inline-block; padding: .25rem .6rem; border-radius: 999px; background: rgba(0,0,0,.15); color: #000; font-size: .75rem; border: 1px solid rgba(0,0,0,.12); }
+.shower-cta { margin-top: .75rem; }
+
+/* ---------- ENHANCED CHATBOT STYLING ---------- */
+.chat-container {
+  background: rgba(20, 20, 40, 0.9);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  box-shadow: 0 0 20px rgba(255, 100, 255, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgba(255, 100, 255, 0.3);
+}
+
+.chat-header h4 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.1rem;
+}
+
+.chat-log {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  scroll-behavior: smooth;
+}
+
+.chat-log::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-log::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.chat-log::-webkit-scrollbar-thumb {
+  background: rgba(255, 100, 255, 0.5);
+  border-radius: 3px;
+}
+
+.msg {
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  border-radius: 8px;
+  max-width: 85%;
+  word-wrap: break-word;
+  animation: fadeInUp 0.3s ease;
+}
+
+.msg.user {
+  background: rgba(255, 100, 255, 0.2);
+  color: #fff;
+  margin-left: auto;
+  text-align: right;
+}
+
+.msg.bot {
+  background: rgba(100, 200, 255, 0.2);
+  color: #fff;
+  margin-right: auto;
+}
+
+.msg.typing {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ccc;
+  font-style: italic;
+}
+
+.typing-dots {
+  display: inline-block;
+}
+
+.dots {
+  animation: typingDots 1.5s infinite;
+}
+
+@keyframes typingDots {
+  0%, 20% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid rgba(255, 100, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-size: 0.9rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: rgba(255, 100, 255, 0.6);
+  box-shadow: 0 0 10px rgba(255, 100, 255, 0.3);
+}
+
+.chat-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.chat-send {
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, rgba(255, 100, 255, 0.8), rgba(100, 200, 255, 0.8));
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chat-send:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 100, 255, 0.4);
+}
+
+.chat-send:active {
+  transform: translateY(0);
+}
+
+.chat-quick {
+  display: inline-block;
+  padding: 0.5rem 0.75rem;
+  margin: 0.25rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 100, 255, 0.3);
+  border-radius: 20px;
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chat-quick:hover {
+  background: rgba(255, 100, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.chat-quick-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  justify-content: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .chat-container {
+    margin: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .chat-log {
+    max-height: 250px;
+  }
+  
+  .msg {
+    max-width: 95%;
+    font-size: 0.9rem;
+  }
+  
+  .chat-quick-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .chat-quick {
+    width: 100%;
+    text-align: center;
+  }
+}
+.btn-ghost { display: inline-block; padding: .5rem .9rem; border-radius: 8px; border: 1px solid rgba(0,0,0,.2); background: rgba(255,255,255,.15); color: #000; text-decoration: none; transition: transform .15s ease, background .2s ease; }
+.btn-ghost:hover { transform: translateY(-1px); background: rgba(255,255,255,.25); }
