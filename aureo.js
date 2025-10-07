@@ -2408,3 +2408,548 @@ async function fetchNASAImageForQuery(query) {
     return '';
   }
 }
+
+function displayFallbackData() {
+  const eventsSection = document.querySelector("#events .cards");
+  const currentYear = new Date().getFullYear();
+ 
+  eventsSection.innerHTML = `
+    <div class="card gradient1">
+      <h4>🌠 Perseids</h4>
+      <p><strong>Peak:</strong> August 12-13, ${currentYear}<br/>
+      <strong>ZHR:</strong> ~100 meteors/hour<br/>
+      <strong>Origin:</strong> Comet Swift-Tuttle</p>
+    </div>
+    <div class="card gradient2">
+      <h4>💫 Geminids</h4>
+      <p><strong>Peak:</strong> December 13-14, ${currentYear}<br/>
+      <strong>ZHR:</strong> ~120 meteors/hour<br/>
+      <strong>Origin:</strong> Asteroid 3200 Phaethon</p>
+    </div>
+    <div class="card gradient3">
+      <h4>⭐ Quadrantids</h4>
+      <p><strong>Peak:</strong> January 3-4, ${currentYear + 1}<br/>
+      <strong>ZHR:</strong> ~110 meteors/hour<br/>
+      <strong>Origin:</strong> Asteroid 2003 EH1</p>
+    </div>
+    <div class="card gradient1">
+      <h4>🌌 Leonids</h4>
+      <p><strong>Peak:</strong> November 17-18, ${currentYear}<br/>
+      <strong>ZHR:</strong> ~15 meteors/hour<br/>
+      <strong>Origin:</strong> Comet Tempel-Tuttle</p>
+    </div>
+    <div class="card gradient2">
+      <h4>✨ Lyrids</h4>
+      <p><strong>Peak:</strong> April 21-22, ${currentYear + 1}<br/>
+      <strong>ZHR:</strong> ~18 meteors/hour<br/>
+      <strong>Origin:</strong> Comet Thatcher</p>
+    </div>
+    <div class="card gradient3">
+      <h4>🌟 Orionids</h4>
+      <p><strong>Peak:</strong> October 20-21, ${currentYear}<br/>
+      <strong>ZHR:</strong> ~20 meteors/hour<br/>
+      <strong>Origin:</strong> Comet Halley</p>
+    </div>
+  `;
+}
+
+// ---------- ENHANCED METEOR GUIDE CHATBOT ----------
+class GuideChatbot {
+  constructor() {
+    this.logEl = document.getElementById('chat-log');
+    this.inputEl = document.getElementById('chat-input');
+    this.sendBtn = document.getElementById('chat-send');
+    this.quickBtns = document.querySelectorAll('.chat-quick');
+    this.location = null;
+    this.isTyping = false;
+    // Enhanced knowledge base with fuzzy matching
+    this.kb = this.buildEnhancedKnowledgeBase();
+    this.init();
+  }
+  init() {
+    if (!this.logEl) return;
+    this.bindEvents();
+    this.detectLocation();
+  }
+  bindEvents() {
+    this.sendBtn?.addEventListener('click', () => this.handleSend());
+    this.inputEl?.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.handleSend(); });
+    this.quickBtns.forEach(btn => btn.addEventListener('click', () => {
+      this.inputEl.value = btn.getAttribute('data-prompt');
+      this.handleSend();
+    }));
+  }
+  buildEnhancedKnowledgeBase() {
+    return {
+      // Meteor basics
+      'meteor_basics': {
+        keywords: ['meteor', 'meteoroid', 'meteorite', 'shooting star', 'space rock', 'difference', 'what is'],
+        questions: ['what is a meteor', 'meteor vs meteoroid', 'shooting star meaning', 'space rock types'],
+        answer: 'A meteoroid is a small space rock floating in space. When it enters Earth\'s atmosphere and burns up, creating a streak of light, that\'s a meteor (or "shooting star"). If any pieces survive and hit the ground, those are meteorites! 🌠'
+      },
+      'meteor_shower': {
+        keywords: ['meteor shower', 'shower', 'annual', 'predictable', 'debris', 'comet trail'],
+        questions: ['what is a meteor shower', 'how do meteor showers work', 'why do meteor showers happen', 'annual meteor showers'],
+        answer: 'Meteor showers happen when Earth passes through debris left behind by comets or asteroids. The debris burns up in our atmosphere, creating lots of meteors that seem to come from one point in the sky (the radiant). They\'re predictable and happen around the same time each year! ✨'
+      },
+      'radiant': {
+        keywords: ['radiant', 'direction', 'where to look', 'point of origin', 'constellation'],
+        questions: ['what is the radiant', 'where do meteors come from', 'which direction to look', 'radiant meaning'],
+        answer: 'The radiant is the point in the sky where meteors appear to originate from. It\'s like perspective - meteors seem to come from one spot, but you should actually look about 45-60° away from the radiant for the best view! 🎯'
+      },
+      'zhr': {
+        keywords: ['zhr', 'zenithal hourly rate', 'meteors per hour', 'rate', 'how many'],
+        questions: ['what is zhr', 'how many meteors per hour', 'meteor shower rate', 'zenithal hourly rate'],
+        answer: 'ZHR (Zenithal Hourly Rate) is the theoretical number of meteors you\'d see under perfect conditions - dark sky, radiant overhead, experienced observer. Real rates are usually lower due to light pollution, moon, and other factors. Think of it as the "best case scenario"! 📊'
+      },
+      'observing_tips': {
+        keywords: ['how to watch', 'tips', 'observe', 'viewing', 'best way', 'technique'],
+        questions: ['how to watch meteors', 'meteor observing tips', 'best way to see meteors', 'viewing techniques'],
+        answer: 'Find a dark spot away from city lights, let your eyes adapt for 20-30 minutes, use a reclining chair, look about 45° from the radiant, avoid phone screens, and dress warmly! No telescope needed - just your eyes and patience. 🌙'
+      },
+      'best_time': {
+        keywords: ['best time', 'when to watch', 'peak time', 'tonight', 'morning', 'evening'],
+        questions: ['when is the best time to watch', 'what time tonight', 'morning vs evening', 'peak viewing time'],
+        answer: 'Most meteor showers are best after midnight when the radiant is higher in the sky and your location faces Earth\'s direction of motion. Dark, moonless nights are ideal. Check the specific shower\'s peak dates for the best activity! 🌅'
+      },
+      'moon_impact': {
+        keywords: ['moon', 'moonlight', 'bright', 'dark', 'phase', 'new moon', 'full moon'],
+        questions: ['how does the moon affect meteors', 'full moon meteor watching', 'moon phase impact', 'bright moon'],
+        answer: 'Bright moonlight washes out faint meteors, making them harder to see. Near new moon is perfect for meteor watching! Near full moon, you\'ll mainly see bright meteors. Try to shield your view from the moon if possible. 🌕'
+      },
+      'light_pollution': {
+        keywords: ['light pollution', 'city lights', 'dark sky', 'bortle', 'urban', 'rural'],
+        questions: ['how does light pollution affect meteors', 'city vs rural meteor watching', 'dark sky locations', 'bortle scale'],
+        answer: 'City lights dramatically reduce the number of meteors you can see. For the best experience, find a dark sky location (Bortle 3-4 or darker). Even driving 30 minutes outside the city can make a huge difference! 🌃'
+      },
+      'famous_showers': {
+        keywords: ['famous', 'popular', 'best', 'major', 'perseids', 'geminids', 'quadrantids'],
+        questions: ['famous meteor showers', 'best meteor showers', 'major annual showers', 'perseids geminids'],
+        answer: 'The most popular annual showers are: Perseids (Aug, ~100/hr), Geminids (Dec, ~120/hr), Quadrantids (Jan, ~110/hr), Lyrids (Apr, ~18/hr), and Leonids (Nov, ~15/hr). Each has its own peak dates and characteristics! 🌠'
+      },
+      'photography': {
+        keywords: ['photograph', 'camera', 'photo', 'astrophotography', 'settings', 'tripod'],
+        questions: ['how to photograph meteors', 'camera settings for meteors', 'meteor photography tips', 'astrophotography'],
+        answer: 'Use a wide-angle lens, high ISO (1600-6400), 10-30 second exposures, continuous shooting on a tripod. Point about 45° away from the radiant to capture longer meteor trails. Patience is key! 📸'
+      },
+      'fireballs': {
+        keywords: ['fireball', 'bolide', 'bright', 'explosion', 'fragment', 'rare'],
+        questions: ['what is a fireball', 'bright meteor', 'bolide meaning', 'exploding meteor'],
+        answer: 'A fireball is an exceptionally bright meteor - brighter than Venus! A bolide is a fireball that explodes or fragments in the atmosphere. These are rare but absolutely spectacular to witness! 💥'
+      },
+      'constellations': {
+        keywords: ['constellation', 'stars', 'patterns', 'sky map', 'navigation', 'star patterns'],
+        questions: ['what are constellations', 'star patterns', 'sky navigation', 'constellation names'],
+        answer: 'Constellations are patterns of stars that humans have grouped together for navigation and storytelling. They help us find our way around the night sky and locate meteor shower radiants! Popular ones include Orion, Ursa Major, and Cassiopeia. ⭐'
+      },
+      'comets': {
+        keywords: ['comet', 'comets', 'icy', 'tail', 'orbit', 'halley', 'swift-tuttle'],
+        questions: ['what are comets', 'comet tails', 'famous comets', 'comet orbits'],
+        answer: 'Comets are icy bodies that orbit the Sun, developing beautiful tails when they get close. Many meteor showers come from debris left by comets like Halley\'s Comet (Orionids) or Swift-Tuttle (Perseids). They\'re like cosmic snowballs! ☄️'
+      },
+      'planets': {
+        keywords: ['planets', 'planet', 'mars', 'venus', 'jupiter', 'saturn', 'mercury'],
+        questions: ['visible planets', 'planet watching', 'mars venus jupiter', 'planet observation'],
+        answer: 'You can see several planets with the naked eye! Venus is the brightest "evening star," Mars appears reddish, Jupiter is large and bright, and Saturn has beautiful rings (visible with binoculars). They\'re great targets while meteor watching! 🪐'
+      },
+      'space_telescope': {
+        keywords: ['telescope', 'binoculars', 'equipment', 'gear', 'magnification', 'optics'],
+        questions: ['do I need a telescope for meteors', 'binoculars for astronomy', 'telescope recommendations', 'astronomy equipment'],
+        answer: 'For meteors, you don\'t need a telescope - your eyes are perfect! But binoculars are great for viewing planets, star clusters, and the Moon. A telescope is wonderful for deep-sky objects, but meteors move too fast for telescopes. 👁️'
+      }
+    };
+  }
+  async handleSend() {
+    const q = (this.inputEl.value || '').trim();
+    if (!q || this.isTyping) return;
+    this.append('user', q);
+    this.inputEl.value = '';
+    this.showTyping();
+   
+    try {
+      const answer = await this.routeIntent(q);
+      this.hideTyping();
+      await this.typeMessage(answer);
+    } catch (e) {
+      this.hideTyping();
+      await this.typeMessage('Sorry, I ran into an issue. Please try again.');
+      console.error(e);
+    }
+    this.logEl.scrollTop = this.logEl.scrollHeight;
+  }
+  append(role, text) {
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    div.textContent = text;
+    this.logEl.appendChild(div);
+  }
+ 
+  showTyping() {
+    this.isTyping = true;
+    const div = document.createElement('div');
+    div.className = 'msg bot typing';
+    div.innerHTML = '<span class="typing-dots">Thinking<span class="dots">...</span></span>';
+    this.logEl.appendChild(div);
+    this.logEl.scrollTop = this.logEl.scrollHeight;
+  }
+ 
+  hideTyping() {
+    this.isTyping = false;
+    const typing = this.logEl.querySelector('.typing');
+    if (typing) typing.remove();
+  }
+ 
+  async typeMessage(text) {
+    const div = document.createElement('div');
+    div.className = 'msg bot';
+    this.logEl.appendChild(div);
+   
+    let i = 0;
+    const typeInterval = setInterval(() => {
+      if (i < text.length) {
+        div.textContent = text.substring(0, i + 1);
+        i++;
+        this.logEl.scrollTop = this.logEl.scrollHeight;
+      } else {
+        clearInterval(typeInterval);
+      }
+    }, 30); // Adjust speed as needed
+  }
+  async detectLocation() {
+    try {
+      const pos = await new Promise((res, rej) => navigator.geolocation ? navigator.geolocation.getCurrentPosition(res, rej,{enableHighAccuracy:true,timeout:8000,maximumAge:300000}) : rej('no-geo'));
+      this.location = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+    } catch { this.location = null; }
+  }
+  async routeIntent(q) {
+    const lower = q.toLowerCase();
+   
+    // Help/commands
+    if (/^(help|commands|topics|what can you do)/.test(lower)) return this.answerHelp();
+   
+    // Enhanced fuzzy matching for knowledge base
+    const bestMatch = this.findBestMatch(q);
+    if (bestMatch) return bestMatch.answer;
+   
+    // Existing intents (kept for compatibility)
+    if (/(upcoming|next|soon).*(shower|meteor)/.test(lower)) return this.answerUpcoming();
+    if (/(best|good).*(time|when)/.test(lower) || /(tonight|peak)/.test(lower)) return this.answerBestTime();
+    if (/(weather|cloud|visibility)/.test(lower)) return this.answerWeather();
+    if (/(where|direction|radiant)/.test(lower)) return this.answerRadiant(q);
+    if (/(moon|phase|brightness)/.test(lower)) return this.answerMoonImpact();
+   
+    // Space images & APOD
+    if (/(apod|astronomy picture of the day)/.test(lower)) return this.answerAPOD();
+    if (/(image|photo|picture|show me).*(of|\b)(.*)/.test(lower)) return this.answerImageSearch(q);
+   
+    // Generic definition fallback
+    if (/(what is|who are|define|meaning|about)/.test(lower)) return this.answerDefinition(q);
+   
+    return this.answerFallback();
+  }
+ 
+  findBestMatch(query) {
+    const lower = query.toLowerCase();
+    let bestScore = 0;
+    let bestMatch = null;
+   
+    for (const [key, topic] of Object.entries(this.kb)) {
+      let score = 0;
+     
+      // Check keywords
+      for (const keyword of topic.keywords) {
+        if (lower.includes(keyword.toLowerCase())) {
+          score += 2;
+        }
+      }
+     
+      // Check questions
+      for (const question of topic.questions) {
+        if (lower.includes(question.toLowerCase())) {
+          score += 3;
+        }
+      }
+     
+      // Partial word matching
+      const words = lower.split(/\s+/);
+      for (const word of words) {
+        for (const keyword of topic.keywords) {
+          if (keyword.toLowerCase().includes(word) || word.includes(keyword.toLowerCase())) {
+            score += 1;
+          }
+        }
+      }
+     
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = topic;
+      }
+    }
+   
+    return bestScore >= 2 ? bestMatch : null;
+  }
+  async answerHelp() {
+    return [
+      'I\'m your space guide! I can help with:',
+      '🌠 Meteor showers & observing tips',
+      '⭐ Constellations & star patterns',
+      '☄️ Comets & space objects',
+      '🪐 Planets & telescope advice',
+      '📸 Astrophotography tips',
+      '🌙 Moon phases & viewing conditions',
+      '',
+      'Try asking: "What is a meteor shower?" or "How do I photograph meteors?"'
+    ].join('\n');
+  }
+  async answerTopic(key) {
+    const entry = this.kb?.[key];
+    if (!entry) return 'I could not find that topic. Try "topics" to see what I cover.';
+    return `${entry.title}: ${entry.text}`;
+  }
+  async answerUpcoming() {
+    const cache = localStorage.getItem('meteorData');
+    if (!cache) return 'I could not find cached meteor data yet. Try refreshing the events.';
+    const { data } = JSON.parse(cache);
+    const now = new Date();
+    const upcoming = data
+      .filter(s => new Date(s.peak || s.peakDate) >= now)
+      .sort((a,b) => new Date(a.peak || a.peakDate) - new Date(b.peak || b.peakDate))
+      .slice(0,5);
+    if (upcoming.length === 0) return 'No upcoming showers in the cached dataset.';
+    return upcoming.map(s => `${s.name} — peak ${new Date(s.peak || s.peakDate).toDateString()} (ZHR ${s.zhr})`).join('\n');
+  }
+  async answerBestTime() {
+    const now = new Date();
+    const sunset = new Date(now); sunset.setHours(18,30,0,0);
+    const sunrise = new Date(now); sunrise.setDate(sunrise.getDate()+1); sunrise.setHours(6,30,0,0);
+    const bestStart = new Date(sunset); bestStart.setHours(bestStart.getHours()+2);
+    const peakStart = new Date(sunset); peakStart.setHours(peakStart.getHours()+4);
+    const peakEnd = new Date(sunrise); peakEnd.setHours(peakEnd.getHours()-2);
+    return `Best start around ${bestStart.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}. Peak viewing between ${peakStart.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} and ${peakEnd.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}.`;
+  }
+  async answerWeather() {
+    if (!this.location) return 'I need your location permission to check weather for meteor viewing.';
+    try {
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${this.location.lat}&lon=${this.location.lon}&appid=demo&units=metric`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('weather');
+      const w = await res.json();
+      const cloud = w.clouds?.all ?? 0;
+      const visKm = (w.visibility ?? 10000)/1000;
+      const cond = w.weather?.[0]?.description || 'clear sky';
+      const score = Math.max(0, Math.min(100, Math.round(100 - cloud*0.6 - (visKm<5?20:0))));
+      return `Sky: ${cond}, cloud cover ${cloud}%, visibility ${visKm} km. Estimated viewing score: ${score}/100.`;
+    } catch {
+      return 'Weather API is unavailable right now. Please try again later.';
+    }
+  }
+  async answerDefinition(q) {
+    const topic = q.replace(/^(what is|define|meaning of|about)\s*/i,'').trim() || 'Meteor shower';
+    try {
+      const api = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topic)}`;
+      const res = await fetch(api);
+      if (!res.ok) throw new Error('wiki');
+      const j = await res.json();
+      const extract = j.extract || 'No summary available.';
+      return extract.length > 600 ? extract.slice(0, 600) + '…' : extract;
+    } catch {
+      return 'I could not fetch a definition right now.';
+    }
+  }
+  async answerRadiant(q) {
+    const cache = localStorage.getItem('meteorData');
+    if (!cache) return 'I need shower data first. Try refreshing events.';
+    const { data } = JSON.parse(cache);
+    const match = data.find(s => q.toLowerCase().includes(s.name.toLowerCase()));
+    if (!match) return 'Please specify the shower name (e.g., Perseids, Orionids).';
+    const dir = match.radiant?.direction || 'Check northeast after midnight';
+    return `${match.name} radiant: ${dir}. Best viewing after midnight, look ~45° from radiant.`;
+  }
+  async answerMoonImpact() {
+    const now = new Date();
+    const knownNewMoon = new Date('2024-01-11T11:57:00Z');
+    const cycle = 29.53059;
+    const days = ((now - knownNewMoon)/(1000*60*60*24));
+    const c = ((days % cycle)+cycle)%cycle;
+    let illum = 50; if (c<1.84566) illum=0; else if(c<5.53699) illum=12; else if(c<9.22831) illum=25; else if(c<12.91963) illum=50; else if(c<16.61096) illum=85; else if(c<20.30228) illum=70; else if(c<23.99361) illum=50; else illum=20;
+    let impact = 'Moderate'; if (illum<10) impact='Minimal'; else if (illum<30) impact='Low'; else if (illum>80) impact='High';
+    return `Estimated moon illumination ~${illum}%. Impact on meteor visibility: ${impact}. Darker skies near new moon are best.`;
+  }
+  async answerAPOD() {
+    try {
+      const res = await fetch('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY');
+      if (!res.ok) throw new Error('apod');
+      const j = await res.json();
+      const title = j.title || 'Astronomy Picture of the Day';
+      const url = j.hdurl || j.url || '';
+      const desc = (j.explanation || '').slice(0, 300) + (j.explanation && j.explanation.length > 300 ? '…' : '');
+      return `${title}\n${url}\n${desc}`;
+    } catch {
+      return 'APOD is unavailable right now. Please try again later.';
+    }
+  }
+  async answerImageSearch(q) {
+    try {
+      // Extract search terms after keywords like image/photo/picture/show me
+      const cleaned = q.replace(/^(show me|image|photo|picture)\s*(of)?\s*/i, '').trim();
+      const term = encodeURIComponent(cleaned || 'meteor shower');
+      const api = `https://images-api.nasa.gov/search?q=${term}&media_type=image`;
+      const res = await fetch(api);
+      if (!res.ok) throw new Error('nasa-images');
+      const j = await res.json();
+      const items = j.collection && Array.isArray(j.collection.items) ? j.collection.items : [];
+      if (!items.length) return `I couldn’t find images for "${cleaned}".`;
+      // Pick the first with a link
+      const first = items.find(it => Array.isArray(it.links) && it.links[0]?.href) || items[0];
+      const title = first.data?.[0]?.title || cleaned || 'NASA Image';
+      const href = first.links?.[0]?.href || '';
+      return `${title}\n${href}`;
+    } catch {
+      return 'NASA Images API is unavailable right now. Please try again later.';
+    }
+  }
+  async answerFallback() {
+    const suggestions = [
+      'I\'m not sure about that yet — but I can tell you about meteors, constellations, or upcoming showers! 🌠',
+      'That\'s interesting! I know about meteor showers, planets, comets, and space observation. What would you like to explore? ✨',
+      'Hmm, I\'m still learning! I\'m great with meteor showers, star patterns, and space tips though. Try asking about those! 🌟'
+    ];
+    return suggestions[Math.floor(Math.random() * suggestions.length)];
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  try { new GuideChatbot(); } catch(e) { console.warn('Chatbot init skipped', e); }
+});
+
+// ---------- REFRESH BUTTON AND AUTO REFRESH ----------
+document.addEventListener('DOMContentLoaded', () => {
+  const refreshBtn = document.getElementById('refresh-meteor-data');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      refreshBtn.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        refreshBtn.style.transform = '';
+        fetchMeteorData();
+      }, 150);
+    });
+  }
+});
+
+// Auto refresh every 6 hours (more frequent updates)
+setInterval(() => {
+  const cache = localStorage.getItem("meteorData");
+  if (cache) {
+    const { time } = JSON.parse(cache);
+    if (Date.now() - time > 6 * 60 * 60 * 1000) {
+      console.log("Auto-refreshing meteor data...");
+      fetchMeteorData();
+    }
+  }
+}, 30 * 60 * 1000); // check every 30 minutes
+
+/* ================================
+   🌠 METEOR CANVAS ANIMATION
+   ================================ */
+class MeteorAnimation {
+  constructor() {
+    this.canvas = document.getElementById('meteor-canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.meteors = [];
+    this.stars = [];
+    this.init();
+  }
+
+  init() {
+    this.resizeCanvas();
+    this.createStars();
+    this.animate();
+   
+    window.addEventListener('resize', () => this.resizeCanvas());
+  }
+
+  resizeCanvas() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+  }
+
+  createStars() {
+    this.stars = [];
+    const numStars = 100;
+    for (let i = 0; i < numStars; i++) {
+      this.stars.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        size: Math.random() * 2,
+        opacity: Math.random()
+      });
+    }
+  }
+
+  createMeteor() {
+    if (Math.random() < 0.02) { // 2% chance per frame
+      this.meteors.push({
+        x: Math.random() * this.canvas.width,
+        y: -10,
+        vx: (Math.random() - 0.5) * 4,
+        vy: Math.random() * 3 + 2,
+        life: 1,
+        decay: Math.random() * 0.02 + 0.01,
+        size: Math.random() * 3 + 1
+      });
+    }
+  }
+
+  updateMeteors() {
+    for (let i = this.meteors.length - 1; i >= 0; i--) {
+      const meteor = this.meteors[i];
+      meteor.x += meteor.vx;
+      meteor.y += meteor.vy;
+      meteor.life -= meteor.decay;
+
+      if (meteor.life <= 0 || meteor.y > this.canvas.height) {
+        this.meteors.splice(i, 1);
+      }
+    }
+  }
+
+  drawStars() {
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    this.stars.forEach(star => {
+      this.ctx.globalAlpha = star.opacity;
+      this.ctx.beginPath();
+      this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+    this.ctx.globalAlpha = 1;
+  }
+
+  drawMeteors() {
+    this.meteors.forEach(meteor => {
+      const gradient = this.ctx.createLinearGradient(
+        meteor.x, meteor.y,
+        meteor.x - meteor.vx * 10, meteor.y - meteor.vy * 10
+      );
+      gradient.addColorStop(0, `rgba(255, 255, 255, ${meteor.life})`);
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+     
+      this.ctx.strokeStyle = gradient;
+      this.ctx.lineWidth = meteor.size;
+      this.ctx.beginPath();
+      this.ctx.moveTo(meteor.x, meteor.y);
+      this.ctx.lineTo(meteor.x - meteor.vx * 10, meteor.y - meteor.vy * 10);
+      this.ctx.stroke();
+    });
+  }
+
+  animate() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+   
+    this.createMeteor();
+    this.updateMeteors();
+    this.drawStars();
+    this.drawMeteors();
+   
+    requestAnimationFrame(() => this.animate());
+  }
+}
